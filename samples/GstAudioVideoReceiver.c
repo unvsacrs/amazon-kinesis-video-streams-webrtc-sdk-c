@@ -120,6 +120,7 @@ PVOID receiveGstreamerAudioVideo(PVOID args)
     // It is advised to modify the pipeline and the caps as per the source of the media. Customers can also modify this pipeline to
     // use any other sinks instead of `filesink` like `autovideosink` and `autoaudiosink`. The existing pipelines are not complex enough to
     // change caps and properties dynamically, more complex logic may be needed to support the same.
+#if 0
     switch (pSampleStreamingSession->pVideoRtcRtpTransceiver->receiver.track.codec) {
         case RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_MODE:
             videoDescription = "appsrc name=appsrc-video ! queue ! h264parse ! queue ! matroskamux name=mux ! queue ! filesink location=video.mkv";
@@ -140,11 +141,12 @@ PVOID receiveGstreamerAudioVideo(PVOID args)
         default:
             break;
     }
+#endif
 
     if (pSampleConfiguration->mediaType == SAMPLE_STREAMING_AUDIO_VIDEO) {
         switch (pSampleStreamingSession->pAudioRtcRtpTransceiver->receiver.track.codec) {
             case RTC_CODEC_OPUS:
-                audioDescription = "appsrc name=appsrc-audio ! queue ! opusparse ! queue ! mux.";
+                audioDescription = "appsrc name=appsrc-audio ! opusparse ! opusdec ! audioconvert ! audioresample ! autoaudiosink";
                 audiocaps = gst_caps_new_simple("audio/x-opus", "rate", G_TYPE_INT, DEFAULT_AUDIO_OPUS_SAMPLE_RATE_HZ, "channel-mapping-family",
                                                 G_TYPE_INT, 1, NULL);
                 break;
@@ -160,16 +162,22 @@ PVOID receiveGstreamerAudioVideo(PVOID args)
         }
     }
 
+#if 0
     audioVideoDescription = g_strjoin(" ", videoDescription, audioDescription, NULL);
+#else
+    audioVideoDescription = g_strjoin(" ", audioDescription, NULL);
+#endif
 
     pipeline = gst_parse_launch(audioVideoDescription, &error);
     CHK_ERR(pipeline != NULL, STATUS_INTERNAL_ERROR, "[KVS GStreamer %s] Pipeline is NULL", roleType);
 
+#if 0
     appsrcVideo = gst_bin_get_by_name(GST_BIN(pipeline), "appsrc-video");
     CHK_ERR(appsrcVideo != NULL, STATUS_INTERNAL_ERROR, "[KVS GStreamer %s] Cannot find appsrc video", roleType);
     CHK_STATUS(transceiverOnFrame(pSampleStreamingSession->pVideoRtcRtpTransceiver, (UINT64) appsrcVideo, onGstVideoFrameReady));
     g_object_set(G_OBJECT(appsrcVideo), "caps", videocaps, NULL);
     gst_caps_unref(videocaps);
+#endif
 
     if (pSampleConfiguration->mediaType == SAMPLE_STREAMING_AUDIO_VIDEO) {
         appsrcAudio = gst_bin_get_by_name(GST_BIN(pipeline), "appsrc-audio");
